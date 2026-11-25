@@ -1,150 +1,134 @@
 # Student Management System
 
-A full-stack student management application built with Java and Spring Boot. It provides secure login, student CRUD operations, searching and pagination, dashboard statistics, server-side validation, and REST API endpoints.
+A server-rendered student management application built with Java 17 and Spring Boot. Staff can sign in to view dashboard statistics and manage student records through a Thymeleaf interface. The project also exposes a JSON REST API for student records.
 
 ## Features
 
-- Spring Security authentication with BCrypt password encoding
-- Dashboard showing total, active, and inactive student counts
-- Create, view, update, and delete student records
-- Case-insensitive student search by name
-- Paginated student listings
-- Server-side form and REST request validation
-- Responsive user interface built with Thymeleaf and Bootstrap
-- MySQL persistence with Spring Data JPA and Hibernate
-- Centralized exception handling
-- REST endpoints for student operations
-- Automatic creation of default application users
+- Login backed by Spring Security and BCrypt password hashing
+- Dashboard counts for all, active, and inactive students
+- Create, list, update, and delete student records
+- Search students by name (case-insensitive)
+- Student listing paginated at five records per page
+- Validation for required student fields and email format
+- REST endpoints to create, retrieve, update, delete, and search students
+- MySQL persistence through Spring Data JPA and Hibernate
 
-## Technology Stack
+## Technology
 
-| Category | Technology |
-| --- | --- |
-| Language | Java 17 |
-| Framework | Spring Boot 4.1 |
-| Security | Spring Security |
-| Web | Spring MVC and Thymeleaf |
-| Data Access | Spring Data JPA and Hibernate |
-| Database | MySQL |
-| Validation | Jakarta Bean Validation |
-| Frontend | HTML, CSS, Bootstrap 5 |
-| Build Tool | Maven |
+- Java 17
+- Spring Boot 4.1.0
+- Spring MVC, Thymeleaf, Spring Security
+- Spring Data JPA, Hibernate, and MySQL
+- Jakarta Bean Validation
+- Maven (Maven Wrapper included)
+- Bootstrap 5.3.3
 
-## Project Structure
+## Project layout
 
 ```text
 src/
 ├── main/
 │   ├── java/com/studentmanagement/
-│   │   ├── config/          # Security and initial data configuration
-│   │   ├── controller/      # MVC controllers
-│   │   ├── entity/          # JPA entities
-│   │   ├── exception/       # Global exception handling
-│   │   ├── repository/      # Database repositories
-│   │   ├── rest/            # REST API controllers
-│   │   ├── security/        # User details service
-│   │   └── service/         # Business logic
+│   │   ├── config/       # Security and initial user setup
+│   │   ├── controller/   # Login, dashboard, and student pages
+│   │   ├── entity/       # Student and user JPA entities
+│   │   ├── exception/    # MVC exception handling
+│   │   ├── repository/   # Spring Data repositories
+│   │   ├── rest/         # Student REST API
+│   │   ├── security/     # User details service
+│   │   └── service/      # Student business operations
 │   └── resources/
-│       ├── templates/       # Thymeleaf pages
+│       ├── templates/    # Thymeleaf pages
 │       └── application.properties
-└── test/                    # Application tests
+└── test/                 # Spring application context test
+docs/                     # Project documentation
 ```
 
-## Prerequisites
+## Requirements
 
-- JDK 17 or later
-- Maven 3.6 or later
-- MySQL 8.x or later
-- A supported IDE such as IntelliJ IDEA, Eclipse, VS Code, or Spring Tool Suite
+- JDK 17 or newer
+- MySQL 8 or newer
 
-## Database Setup
+The included Maven Wrapper downloads and runs the required Maven version; a separate Maven installation is not needed.
 
-Create a MySQL database:
+## Run locally
 
-```sql
-CREATE DATABASE student_management_system;
-```
+1. Clone the repository and enter the project directory:
 
-The application uses the following default database settings from `src/main/resources/application.properties`:
+   ```bash
+   git clone https://github.com/nikhil24682/student-management-system.git
+   cd student-management-system
+   ```
 
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/student_management_system
-spring.datasource.username=root
-spring.datasource.password=root
-```
+2. Create the database:
 
-Update these values to match your local MySQL configuration. Hibernate creates or updates the required tables automatically because `spring.jpa.hibernate.ddl-auto=update` is enabled.
+   ```sql
+   CREATE DATABASE student_management_system;
+   ```
 
-## Getting Started
+3. Configure the database connection. The defaults in `src/main/resources/application.properties` are:
 
-### 1. Clone the repository
+   ```properties
+   spring.datasource.url=jdbc:mysql://localhost:3306/student_management_system
+   spring.datasource.username=root
+   spring.datasource.password=root
+   ```
 
-```bash
-git clone https://github.com/nikhil24682/student-management-system.git
-cd student-management-system
-```
+   Update these values for your local MySQL account. Alternatively, Spring Boot environment variables can override them; for example, set `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD` before starting the application.
 
-### 2. Configure MySQL
+4. Start the application:
 
-Create the database and update the datasource username and password in `application.properties`.
+   ```bash
+   ./mvnw spring-boot:run
+   ```
 
-### 3. Run the application
+   On Windows, use `mvnw.cmd spring-boot:run`.
 
-On Linux or macOS:
+5. Open [http://localhost:8080/login](http://localhost:8080/login).
 
-```bash
-./mvnw spring-boot:run
-```
+Hibernate is configured with `spring.jpa.hibernate.ddl-auto=update`, so it creates or updates the schema at startup. SQL statements are logged in the current configuration.
 
-On Windows:
+## Local login accounts
 
-```bash
-mvnw.cmd spring-boot:run
-```
-
-Alternatively, import the project into your IDE and run `StudentManagementSystemApplication`.
-
-Open `http://localhost:8080/login` in your browser.
-
-## Default Accounts
-
-The application creates these accounts on the first startup when no users exist:
+On startup, if the users table is empty, the application creates these accounts:
 
 | Username | Password | Role |
 | --- | --- | --- |
 | `admin` | `admin123` | `ADMIN` |
 | `user` | `user123` | `USER` |
 
-> Change or remove the default credentials before deploying the application.
+These are development defaults defined in `DataInitializer`; replace them before using the application beyond a local environment.
 
-## Application Routes
+## Web routes
+
+Web pages use form-based login. All routes other than the login page and static assets require authentication.
 
 | Method | Route | Description |
 | --- | --- | --- |
-| `GET` | `/login` | Display the login page |
-| `GET` | `/dashboard` | View student statistics |
-| `GET` | `/students` | List paginated students |
-| `GET` | `/students/add` | Open the add-student form |
-| `POST` | `/students/save` | Create or update a student |
-| `GET` | `/students/edit/{id}` | Open an existing student for editing |
+| `GET` | `/login` | Login page |
+| `GET` | `/dashboard` | Student totals and active/inactive counts |
+| `GET` | `/students` | Student list; accepts a zero-based `page` query parameter |
+| `GET` | `/students/add` | New student form |
+| `POST` | `/students/save` | Save a student |
+| `GET` | `/students/edit/{id}` | Edit form for a student |
 | `GET` | `/students/delete/{id}` | Delete a student |
 | `GET` | `/students/search?name={name}` | Search students by name |
 | `POST` | `/logout` | Log out |
 
 ## REST API
 
-The REST API is available under `/api/students`.
+The student API is rooted at `/api/students`. **The current security configuration permits unauthenticated access to `/api/**`.** Do not expose this configuration to an untrusted network without first defining and applying appropriate API authentication and authorization.
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
-| `GET` | `/api/students` | Get all students |
-| `GET` | `/api/students/{id}` | Get a student by ID |
+| `GET` | `/api/students` | Return all students |
+| `GET` | `/api/students/{id}` | Return one student |
 | `POST` | `/api/students` | Create a student |
 | `PUT` | `/api/students/{id}` | Update a student |
 | `DELETE` | `/api/students/{id}` | Delete a student |
-| `GET` | `/api/students/search?name={name}` | Search students by name |
+| `GET` | `/api/students/search?name={name}` | Search by name |
 
-Example request body:
+Example JSON body for `POST` or `PUT`:
 
 ```json
 {
@@ -160,29 +144,30 @@ Example request body:
 }
 ```
 
-Student fields are validated before being saved. Required text fields must not be blank, the email must use a valid format, and both date fields must be provided.
+Student name, email, phone, gender, course, address, date of birth, admission date, and status are required. The email must also have a valid format.
 
-## Running Tests
+## Tests
+
+Run the test suite with:
 
 ```bash
 ./mvnw test
 ```
 
-## Production Considerations
+## Security and deployment notes
 
-Before deploying:
+The checked-in configuration is intended for local development, not production:
 
-- Replace the default datasource credentials
-- Change the default application accounts
-- Use environment variables or an external secrets manager for sensitive configuration
-- Disable SQL logging and enable appropriate production logging
-- Configure HTTPS and an appropriate CORS policy
-- Add database migrations with a tool such as Flyway or Liquibase
-- Review API security rules for your deployment requirements
+- The database credentials and default login accounts are development defaults.
+- The REST API is currently unauthenticated.
+- CSRF protection is disabled in the Spring Security configuration.
+- Hibernate schema updates and SQL logging are enabled.
 
-## Author
+Review and change these settings, configure HTTPS, and apply appropriate access controls before deployment.
 
-**A Nikhil**
+## Documentation
+
+See [`docs/`](./docs/README.md) for the documentation index. Project-specific guides can be added there.
 
 ## License
 
