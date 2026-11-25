@@ -44,14 +44,25 @@ src/
 docs/                     # Project documentation
 ```
 
-## Requirements
+## Run with Docker Compose
 
-- JDK 17 or newer
-- MySQL 8 or newer
+Docker Desktop (or Docker Engine with the Compose plugin) is the only local prerequisite. Compose builds the Java application in a container and starts it with MySQL; you do not need to install Java, Maven, or MySQL on your machine.
 
-The included Maven Wrapper downloads and runs the required Maven version; a separate Maven installation is not needed.
+From the project root, run:
 
-## Run locally
+```bash
+docker compose up --build
+```
+
+When the containers are ready, open [http://localhost:8080/login](http://localhost:8080/login). Sign in with `admin` / `admin123` or `user` / `user123` on the first run (see [Local login accounts](#local-login-accounts)).
+
+MySQL data is kept in the `mysql_data` Docker volume across restarts. Stop the containers with `Ctrl+C`, or run `docker compose down` in another terminal. To also permanently delete the database data, run `docker compose down --volumes`.
+
+Compose uses local-development database credentials by default. Override `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, and `MYSQL_ROOT_PASSWORD` in your shell or a local `.env` file if needed; do not commit real credentials. These defaults and the seeded login accounts are not suitable for production.
+
+## Run locally without Docker
+
+For this option, install JDK 17 or newer and MySQL 8 or newer. The included Maven Wrapper downloads and runs the required Maven version; a separate Maven installation is not needed.
 
 1. Clone the repository and enter the project directory:
 
