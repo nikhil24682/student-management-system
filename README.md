@@ -42,6 +42,7 @@ src/
 │       └── application.properties
 └── test/                 # Spring application context test
 docs/                     # Project documentation
+infra/                    # Docker Compose and image build files
 ```
 
 ## Run with Docker Compose
@@ -51,14 +52,14 @@ Docker Desktop (or Docker Engine with the Compose plugin) is the only local prer
 From the project root, run:
 
 ```bash
-docker compose up --build
+docker compose -f infra/compose.yaml up --build
 ```
 
 When the containers are ready, open [http://localhost:8080/login](http://localhost:8080/login). Sign in with `admin` / `admin123` or `user` / `user123` on the first run (see [Local login accounts](#local-login-accounts)).
 
-MySQL data is kept in the `mysql_data` Docker volume across restarts. Stop the containers with `Ctrl+C`, or run `docker compose down` in another terminal. To also permanently delete the database data, run `docker compose down --volumes`.
+MySQL data is kept in the `mysql_data` Docker volume across restarts. Stop the containers with `Ctrl+C`, or run `docker compose -f infra/compose.yaml down` in another terminal. To also permanently delete the database data, run `docker compose -f infra/compose.yaml down --volumes`.
 
-Compose uses local-development database credentials by default. Override `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, and `MYSQL_ROOT_PASSWORD` in your shell or a local `.env` file if needed; do not commit real credentials. These defaults and the seeded login accounts are not suitable for production.
+Compose uses local-development database credentials by default. Override `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, and `MYSQL_ROOT_PASSWORD` in your shell or a local `infra/.env` file if needed; do not commit real credentials. These defaults and the seeded login accounts are not suitable for production.
 
 ## Run locally without Docker
 
