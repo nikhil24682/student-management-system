@@ -1,11 +1,11 @@
 package com.studentmanagement.rest;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import com.studentmanagement.entity.Student;
 import com.studentmanagement.service.StudentService;
 
 import jakarta.validation.Valid;
@@ -14,46 +14,46 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/students")
 public class StudentRestController {
 
-    @Autowired
-    private StudentService studentService;
+    private final StudentService studentService;
+
+    public StudentRestController(StudentService studentService) {
+        this.studentService = studentService;
+    }
 
     @GetMapping
-    public List<Student> getAllStudents() {
-        return studentService.getAllStudents();
+    public List<StudentResponse> getAllStudents() {
+        return studentService.getAllStudents().stream()
+                .map(StudentResponse::from)
+                .collect(Collectors.toList());
     }
 
     @GetMapping("/{id}")
-    public Student getStudentById(@PathVariable Integer id) {
-        return studentService.getStudentById(id);
+    public StudentResponse getStudentById(@PathVariable Integer id) {
+        return StudentResponse.from(studentService.getStudentById(id));
     }
 
     @PostMapping
-    public Student saveStudent(@Valid @RequestBody Student student) {
-        return studentService.saveStudent(student);
+    @ResponseStatus(HttpStatus.CREATED)
+    public StudentResponse saveStudent(@Valid @RequestBody StudentRequest request) {
+        return StudentResponse.from(studentService.saveStudent(request.toStudent(null)));
     }
 
     @PutMapping("/{id}")
-    public Student updateStudent(@PathVariable Integer id,
-                                 @Valid @RequestBody Student student) {
-
-        student.setId(id);
-
-        return studentService.updateStudent(student);
+    public StudentResponse updateStudent(@PathVariable Integer id,
+                                         @Valid @RequestBody StudentRequest request) {
+        return StudentResponse.from(studentService.updateStudent(request.toStudent(id)));
     }
 
     @DeleteMapping("/{id}")
-    public String deleteStudent(@PathVariable Integer id) {
-
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteStudent(@PathVariable Integer id) {
         studentService.deleteStudent(id);
-
-        return "Student Deleted Successfully";
     }
 
     @GetMapping("/search")
-    public List<Student> searchStudent(@RequestParam String name) {
-
-        return studentService.searchStudents(name);
-
+    public List<StudentResponse> searchStudent(@RequestParam String name) {
+        return studentService.searchStudents(name).stream()
+                .map(StudentResponse::from)
+                .collect(Collectors.toList());
     }
-
 }

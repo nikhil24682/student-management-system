@@ -1,6 +1,6 @@
 # System analysis and technical vision
 
-**Assessment basis:** checked-in project source and configuration reviewed on 2026-11-25. This document distinguishes the system that exists from recommendations; proposed capabilities are not represented as delivered features.
+**Assessment basis:** checked-in project source and configuration reviewed on 2026-11-26. This document distinguishes the system that exists from recommendations; proposed capabilities are not represented as delivered features.
 
 ## 1. Current system (AS-IS)
 
@@ -8,7 +8,7 @@
 
 The Student Management System is a single Spring Boot application. It renders browser pages with Thymeleaf and Bootstrap, authenticates browser users with Spring Security form login, and exposes a separate JSON API for student records. Both interfaces use the same service, repository, JPA entity, and MySQL database.
 
-The deployed unit is a server-side Java application, not a separate frontend/API deployment or a microservice suite. There is no separate API contract/schema, migration tool, container definition, CI pipeline, or external integration configured in the reviewed repository.
+The deployed unit is a server-side Java application, not a separate frontend/API deployment or a microservice suite. Flyway manages database migrations and Docker Compose defines the local app/MySQL stack. There is no separate API contract generator, CI pipeline, or external integration configured in the reviewed repository.
 
 ### 1.2 Technology stack
 
@@ -19,12 +19,12 @@ The deployed unit is a server-side Java application, not a separate frontend/API
 | Browser rendering | Thymeleaf; Bootstrap 5.3.3 loaded from jsDelivr in templates |
 | Authentication | Spring Security form login; custom `UserDetailsService`; BCrypt password encoder |
 | Persistence | Spring Data JPA and Hibernate |
-| Database driver | MySQL Connector/J; default JDBC URL targets MySQL on localhost |
+| Database driver | MySQL Connector/J; JDBC connection settings supplied through environment variables |
 | Validation | Jakarta Bean Validation annotations on `Student`; Spring validation starter |
 | Build | Maven Wrapper, Maven distribution 3.9.16 |
-| Tests | Spring Boot test dependencies and one context-load test |
+| Tests | Spring Boot test dependencies, a context-load test, and focused MVC/security tests |
 
-No separate JavaScript application, frontend build tool, API documentation generator, migration framework, cache, message broker, observability stack, or AI integration is configured.
+No separate JavaScript application, frontend build tool, API documentation generator, cache, message broker, observability stack, or AI integration is configured.
 
 ### 1.3 Architecture
 
@@ -60,20 +60,20 @@ flowchart LR
 
 | Module / location | Status | Responsibility and observed boundaries |
 | --- | --- | --- |
-| `config/SecurityConfig.java` | Implemented, limited | Form login, logout, BCrypt, URL authorization rules. CSRF is explicitly disabled; `/api/**` is explicitly public. |
-| `config/DataInitializer.java` | Implemented, development-only | Creates `admin` and `user` only when the `users` table has zero rows. Passwords are BCrypt-encoded. It does not repair a partially populated user table. |
+| `config/SecurityConfig.java` | Implemented, interim policy | Form login, logout, BCrypt, CSRF, authenticated API reads, ADMIN-only writes, and ADMIN-only student mutations. |
+| `config/DataInitializer.java` | Implemented, environment-driven | Creates configured ADMIN and optional USER accounts only when the users table is empty. Passwords are BCrypt-encoded; there are no built-in credentials. |
 | `controller/LoginController.java` | Implemented | Serves login and dashboard. Dashboard reads total, Active, and Inactive counts from the service. |
-| `controller/StudentController.java` | Implemented, limited | Serves student list, add/edit/save/delete, and name search. List pagination is fixed at five records. |
-| `rest/StudentRestController.java` | Implemented, limited | CRUD and name search under `/api/students`. Returns JPA entities directly and returns a string for delete. |
+| `controller/StudentController.java` | Implemented, limited | Serves student list, add/edit/save/delete, and name search. List pagination is fixed at five records; delete uses POST. |
+| `rest/StudentRestController.java` | Implemented, limited | Authenticated CRUD and name search under `/api/students`; uses request/response DTOs and standard status/error responses. |
 | `service/StudentService{,Impl}.java` | Implemented | Delegates student persistence/search and provides student counts; contains no transaction boundary or additional domain rules. |
 | `repository/StudentRepository.java` | Implemented | Uses `JpaRepository`; adds case-insensitive contains search and count-by-status. |
 | `repository/UserRepository.java` | Implemented | Uses `JpaRepository`; adds username lookup. |
 | `entity/Student.java` | Implemented | Student fields, identity ID, table name, and basic validation constraints. |
-| `entity/User.java` | Implemented, limited | Username, password, role string, enabled flag; no explicit uniqueness or field validation constraints are declared. |
+| `entity/User.java` | Implemented, limited | Username, password, role string, enabled flag; username is non-null and unique in the current schema. |
 | `security/CustomUserDetailsService.java` | Implemented | Loads a persisted user by username, maps role using Spring's `roles(...)` convention, and respects `enabled`. |
-| `exception/GlobalExceptionHandler.java` | Implemented, limited | Catches any `Exception` application-wide and renders the HTML error view with the exception message. It does not define API-specific error payloads or exception/status mappings. |
+| `exception/GlobalExceptionHandler.java` | Implemented, limited | Maps missing browser student records to a safe 404 page. API errors use a separate problem-details handler. |
 | `resources/templates/` | Implemented | Login, dashboard, student list, student form, and generic error pages. Layout/style is inline; Bootstrap CSS is fetched from a CDN. |
-| `src/test/java/...` | Partial | One `@SpringBootTest` context-load test; no focused controller, service, repository, security, API, or validation tests were found. |
+| `src/test/java/...` | Partial | Context-load test and focused MVC tests for API authentication, roles, CSRF, and DTO responses; service/repository and migration upgrade tests remain to be added. |
 
 ### 1.5 Current capabilities and status
 
@@ -82,29 +82,32 @@ flowchart LR
 | User login/logout | Implemented | Database-backed form login and logout configuration. |
 | Student create and edit | Implemented | MVC form plus API POST/PUT; entity validation is applied at both entry points. |
 | Student listing | Implemented, limited | MVC list paginates at five rows; API returns the full list. |
-| Student delete | Implemented, unsafe interaction | MVC performs deletion through GET; API uses DELETE. |
+| Student delete | Implemented | MVC deletion uses POST with CSRF; API deletion uses DELETE with authentication, authorization, and CSRF. |
 | Name search | Implemented, limited | Case-insensitive substring query. MVC search has no pagination metadata, unlike the list template's expectations. |
 | Dashboard counts | Implemented | Total records and exact status counts for `"Active"` and `"Inactive"`. |
 | Validation | Partial | Required values and email format are checked. No phone format/length, date ordering, email uniqueness, allowed-value domain validation, or database uniqueness constraints are declared. |
-| Role-specific student permissions | Missing in current routes | Security has `/admin/**` and `/user/**` matchers, but current student and dashboard routes do not use those prefixes and no method-level role annotations were found. Authenticated `USER` and `ADMIN` accounts can therefore reach the same web functions. |
-| API authentication | Missing | `/api/**` is configured with `permitAll()`. |
+| Role-specific student permissions | Interim | Authenticated users can read student pages/API; only ADMIN can open write forms or mutate student records. Confirm the full institution permission matrix before production. |
+| API authentication | Implemented, interim | All `/api/**` requests require authentication; reads are available to authenticated roles and writes require ADMIN. Session/CSRF authentication is not intended as a third-party API strategy. |
 | API pagination/versioning/contract | Missing | API list/search return unpaged entity lists; no version prefix or OpenAPI contract is present. |
 | Account administration, registration, password reset | Missing | No corresponding controller or workflow was found. |
 | Audit trail, reporting/export, student-course enrollment model | Missing | No audit entities, export flow, or related domain entities were found. |
 
 ### 1.6 User roles and access behavior
 
-Two seed accounts are created on a fresh/empty users table: `admin` with role `ADMIN`, and `user` with role `USER`. Their development passwords are `admin123` and `user123`, respectively, in `DataInitializer`.
+On a fresh/empty users table, `DataInitializer` requires externally configured `APP_BOOTSTRAP_ADMIN_USERNAME` and `APP_BOOTSTRAP_ADMIN_PASSWORD`; an optional USER account uses the matching `APP_BOOTSTRAP_USER_*` variables. There are no built-in passwords, and populated tables are not changed by bootstrap.
 
 | Request category | Configured access |
 | --- | --- |
 | `/login`, `/css/**`, `/js/**`, `/images/**` | Public |
-| `/api/**` | Public, regardless of account or role |
+| `GET /api/**` | Requires authentication |
+| Non-GET `/api/**` | Requires `ADMIN` and a valid CSRF token |
+| `GET /students/add`, `GET /students/edit/**` | Requires `ADMIN` |
+| `POST /students/**` | Requires `ADMIN` and a valid CSRF token |
 | `/admin/**` | Requires `ADMIN` role |
 | `/user/**` | Requires `ADMIN` or `USER` role |
 | Everything else | Requires authentication |
 
-There are no `/admin/**` or `/user/**` application endpoints in the reviewed controllers. The role matchers therefore do not currently separate access to the student screens; any authenticated account can access those screens. `@EnableMethodSecurity` is enabled, but no method-level authorization annotations were found.
+The current policy is intentionally minimal: authenticated USER accounts can read student data, while ADMIN accounts can manage it. User/account management and institution-specific permissions are not implemented.
 
 ### 1.7 Database structure
 
@@ -137,9 +140,9 @@ erDiagram
 | Table/entity | Fields | Constraints in application code |
 | --- | --- | --- |
 | `students` / `Student` | `id`, `name`, `email`, `phone`, `gender`, `course`, `address`, `dateOfBirth`, `admissionDate`, `status` | Generated ID; all listed business fields except `id` have validation constraints. Email uses `@Email` and `@NotBlank`; text fields use `@NotBlank`; both dates use `@NotNull`. `LocalDate` form binding uses `yyyy-MM-dd`. |
-| `users` / `User` | `id`, `username`, `password`, `role`, `enabled` | Generated ID only is explicit. No field-level validation, username uniqueness, roles table, or relationship is declared. |
+| `users` / `User` | `id`, `username`, `password`, `role`, `enabled` | Generated ID; username is non-null and unique. No roles table or account-management workflow is implemented. |
 
-The configured datasource is `jdbc:mysql://localhost:3306/student_management_system`, with `root` / `root` credentials in `application.properties`. Hibernate uses `ddl-auto=update`; SQL and formatted SQL are logged. This is a local-development setup, not a controlled production schema/migration strategy.
+Datasource URL/user/password are configured outside source control. Flyway manages versioned migrations, baselines a non-empty legacy schema at version 1, and Hibernate uses `ddl-auto=validate`. SQL logging is disabled by default. See [Database migrations and legacy-data readiness](./database-migration-and-inventory.md) for preflight, backup, and recovery steps.
 
 ### 1.8 HTTP interfaces
 
@@ -152,28 +155,27 @@ All routes below other than login and configured static paths require authentica
 | `GET` | `/login` | Renders login form. Spring Security processes form login. |
 | `GET` | `/dashboard` | Renders total, Active, and Inactive counts. |
 | `GET` | `/students?page={page}` | Renders a zero-based page of five students; default page is `0`. |
-| `GET` | `/students/add` | Renders an empty student form. |
+| `GET` | `/students/add` | Renders an empty student form for ADMIN. |
 | `POST` | `/students/save` | Validates and saves the bound student; redirects to `/students` on success. |
-| `GET` | `/students/edit/{id}` | Looks up a student and renders the form. |
-| `GET` | `/students/delete/{id}` | Deletes and redirects; mutation through GET is not safe HTTP behavior. |
+| `GET` | `/students/edit/{id}` | Looks up a student and renders the form for ADMIN. |
+| `POST` | `/students/delete/{id}` | Deletes and redirects; ADMIN and CSRF required. |
 | `GET` | `/students/search?name={name}` | Returns case-insensitive name matches to the student-list template. |
 | `POST` | `/logout` | Spring Security logout; redirects to `/login?logout`. |
-| `GET` | `/test-error` | Test/debug route that deliberately divides by zero; it is not a user feature and currently requires authentication. |
 
 #### JSON API
 
-All endpoints below are currently public because `/api/**` is permitted in `SecurityConfig`.
+All endpoints require authentication. Read operations are available to authenticated roles; state-changing operations require ADMIN and CSRF.
 
 | Method | Path | Behavior |
 | --- | --- | --- |
 | `GET` | `/api/students` | Returns all students in one response. |
-| `GET` | `/api/students/{id}` | Returns the service lookup result; a missing ID currently becomes `null` at the service layer. |
-| `POST` | `/api/students` | Validates JSON `Student` and saves it. |
-| `PUT` | `/api/students/{id}` | Assigns path ID to request entity and saves it. |
-| `DELETE` | `/api/students/{id}` | Deletes by ID; response body is the text `Student Deleted Successfully`. |
+| `GET` | `/api/students/{id}` | Returns a response DTO or a 404 Problem Detail. |
+| `POST` | `/api/students` | Validates a request DTO and returns 201 with a response DTO. |
+| `PUT` | `/api/students/{id}` | Validates a request DTO and updates the resource selected by the path ID. |
+| `DELETE` | `/api/students/{id}` | Deletes by ID and returns 204. |
 | `GET` | `/api/students/search?name={name}` | Returns all matching students; no page/size controls. |
 
-The JSON representation follows `Student` fields. Dates are `LocalDate` values represented in ISO date form, e.g. `2004-05-15`. The entity requires nonblank `name`, `email`, `phone`, `gender`, `course`, `address`, and `status`, plus non-null `dateOfBirth` and `admissionDate`; email must satisfy `@Email`. No explicit request/response DTOs or stable error-response schema were found.
+The response DTO includes current student fields and an ID; request DTOs cannot assign the database ID. Dates are `LocalDate` values represented in ISO date form, e.g. `2004-05-15`. Validation errors and missing records return safe Problem Detail responses rather than exception messages.
 
 ### 1.9 Main workflows
 
@@ -216,7 +218,7 @@ sequenceDiagram
     participant DB as MySQL
 
     Client->>Security: POST /api/students (JSON)
-    Note over Security: /api/** is currently permitAll
+    Note over Security: Authenticated user required; ADMIN and CSRF required for writes
     Security->>API: Dispatch request
     API->>API: Validate request entity
     API->>Service: saveStudent
@@ -231,21 +233,21 @@ The following are observations from the current checkout, not claims about exter
 
 | Priority | Area | Current gap / risk | Recommended direction |
 | --- | --- | --- | --- |
-| Critical | API access control | Student read/write/delete API is unauthenticated. | Require authentication and explicit least-privilege authorization; test every API operation unauthenticated and per role. |
-| Critical | CSRF and browser mutations | CSRF is disabled globally while session-based form login is enabled; deletion is also exposed as GET. | Re-enable CSRF for browser forms, use POST/DELETE for mutations, and use a deliberate stateless/API security chain if API auth requires different behavior. |
-| High | Default credentials/secrets | Predictable accounts and plaintext database credentials are checked into source configuration. | Remove seed passwords from production paths; use secrets outside source control, startup validation, and rotate any credentials used outside local development. |
-| High | Authorization model | `ADMIN`/`USER` URL rules are not attached to current student URLs, so roles do not restrict student management. | Define documented permissions and enforce them at URL or method level; add negative authorization tests. |
-| High | Error handling | A catch-all handler exposes raw exception messages in an HTML view and does not provide API-specific error mapping. | Use safe user messages, structured logging with correlation IDs, and separate MVC/API error handling with appropriate status codes and a stable error schema. |
-| High | Missing-record handling | `getStudentById` returns `null`; edit and API retrieval do not define deliberate not-found semantics. | Return explicit not-found results and map them consistently to HTML and API responses. |
-| High | Schema lifecycle | `ddl-auto=update` is used with no migration scripts; model changes are not versioned or reviewed as database migrations. | Introduce versioned migrations, validate schema on application startup, and define backup/restore procedures. |
+| Critical | API access control | Resolved in current code: authentication required; ADMIN-only writes and regression tests added. Third-party API auth remains unselected. | Select an API authentication strategy before serving external clients; retain role and CSRF tests. |
+| Critical | CSRF and browser mutations | Resolved in current code: session CSRF is enabled; MVC delete is POST and API writes require CSRF. | Keep all state changes on non-GET methods and covered by CSRF tests. |
+| High | Default credentials/secrets | Resolved in current code: datasource/bootstrap secrets are environment-provided; no built-in accounts are created. Older database accounts still require explicit rotation. | Manage secrets through deployment tooling and rotate legacy credentials. |
+| High | Authorization model | Interim USER-read/ADMIN-write policy is enforced on student pages/API with tests. | Obtain approval for a complete institution permission/data-scope model. |
+| High | Error handling | Student missing-record errors are sanitized and mapped to 404; API validation/not-found/conflict handlers return Problem Details. | Add operational structured logging/correlation and extend error mappings as features grow. |
+| High | Missing-record handling | Resolved for student reads/updates/deletes through explicit not-found exceptions and 404 mappings. | Keep not-found behavior consistent as new resources are added. |
+| High | Schema lifecycle | Flyway versioned migrations and Hibernate schema validation are enabled. Existing-database inventory and backup/restore still require operator execution against the target database. | Run and review the read-only inventory, verify backup/restore, and test the upgrade against a representative database copy. |
 | Medium | MVC search/list behavior | Search renders `students.html`, which expects `currentPage` and `totalPages`, but search supplies only `students`. Empty results and pagination state may not render coherently. | Use one list view model for search and listing; add focused view/controller tests. |
 | Medium | Input/domain validation | Phone is any nonblank text; dates are not checked for chronology; gender/status values are not enforced for API callers; email is not unique. | Add validated request DTOs, domain rules, length/range constraints, and database uniqueness where business rules require them. |
-| Medium | API design | API returns persistence entities, has no pagination, versioning, documented contract, or consistent response envelope; deletes return plain text. | Introduce DTOs, pagination/filtering, versioned API contract (e.g. OpenAPI), and predictable HTTP status/error responses. |
+| Medium | API design | DTOs and predictable delete/error responses are implemented; API still has no pagination, versioning, or OpenAPI contract. | Add bounded pagination and a documented/versioned API contract. |
 | Medium | Performance | REST get-all and search are unbounded; name substring matching can become expensive as data grows; no indexes or measurements are specified. | Establish expected data volumes, add bounded pagination, inspect query plans, index measured query patterns, and monitor database latency. |
-| Medium | Test coverage | Only application context loading is tested; no behavioral or security regressions are covered. | Add service/repository integration tests and MVC/API tests for validation, roles, CSRF, error paths, and pagination. |
+| Medium | Test coverage | MVC/security behavior is tested; service/repository and real-database migration-upgrade coverage remain limited. | Add migration and repository integration tests using the production database engine. |
 | Low | Operational readiness | No production profile, health/metrics, structured logging policy, containerization, CI/CD, or documented operations workflow is present in the checkout. | Add environment-specific config and delivery/operations automation once deployment targets are selected. |
-| Low | Maintainability | Controllers/services use field injection; some debug `System.out` writes exist; test-error route divides by zero; some unused declarations/imports are present. | Prefer constructor injection, application logging, remove the test-only route, and keep code clean through formatter/static analysis. |
-| Low | UI maintainability/accessibility | Repeated inline styles; Bootstrap comes from CDN; delete link is a destructive GET; forms have minimal accessibility affordances. | Consolidate local assets/layout, improve accessible labels/feedback, and use a confirmation flow that submits a non-GET mutation. |
+| Low | Maintainability | Student/security services use constructor injection; the test-error route and student PII debug writes were removed. Other packages may still contain field injection or debug output. | Continue incremental constructor-injection cleanup and static analysis. |
+| Low | UI maintainability/accessibility | UI refresh work is tracked separately; destructive student deletion now submits a CSRF-protected POST form. | Continue the UI refresh and maintain non-GET mutation semantics. |
 
 ## 3. Future vision (TO-BE)
 

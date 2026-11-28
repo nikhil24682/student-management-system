@@ -27,6 +27,8 @@
 
 ## Phase 1 — Security and stabilization
 
+**Repository implementation update (2026-11-26):** The current checkout now requires authentication for the student API, applies an interim ADMIN-write/USER-read policy, enables CSRF, removes browser deletion through GET and the deliberate error route, returns DTOs and safe not-found errors, and uses environment-driven bootstrap credentials. Focused MVC/security tests cover the main access boundaries. This does not constitute approval of the institution's final authorization model or an external API authentication strategy.
+
 **Work**
 - Secure API routes.
 - Implement effective role/permission checks.

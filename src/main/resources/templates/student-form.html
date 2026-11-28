@@ -1,174 +1,138 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-<meta charset="UTF-8">
-<title>Add Student</title>
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<style>
-
-body{
-    background:#f4f7fc;
-}
-
-.container{
-    max-width:700px;
-    margin-top:40px;
-}
-
-.card{
-    border:none;
-    border-radius:12px;
-    box-shadow:0 4px 12px rgba(0,0,0,.15);
-}
-
-</style>
-
+  <th:block th:replace="~{fragments/layout :: head(${student.id == null} ? 'Add Student' : 'Edit Student')}"/>
 </head>
-
 <body>
+<div class="app-shell">
 
-<div class="container">
+  <th:block th:replace="~{fragments/layout :: shell('add-student')}"/>
 
-<div class="card p-4">
+  <main class="main-content" id="main-content" tabindex="-1">
 
-<h2 class="mb-4 text-primary">Add Student</h2>
-
-<form th:action="@{/students/save}" th:object="${student}" method="post">
-	
-	<input type="hidden" th:field="*{id}">
-
-	<div class="mb-3">
-	    <label>Name</label>
-
-	    <input type="text"
-	           th:field="*{name}"
-	           class="form-control">
-
-	    <div class="text-danger"
-	         th:if="${#fields.hasErrors('name')}"
-	         th:errors="*{name}">
-	    </div>
-	</div>
-
-	<div class="mb-3">
-	    <label>Email</label>
-
-	    <input type="email"
-	           th:field="*{email}"
-	           class="form-control">
-
-	    <div class="text-danger"
-	         th:if="${#fields.hasErrors('email')}"
-	         th:errors="*{email}">
-	    </div>
-	</div>
-
-	<div class="mb-3">
-	    <label>Phone</label>
-
-	    <input type="text"
-	           th:field="*{phone}"
-	           class="form-control">
-
-	    <div class="text-danger"
-	         th:if="${#fields.hasErrors('phone')}"
-	         th:errors="*{phone}">
-	    </div>
-	</div>
-
-	<div class="mb-3">
-	    <label>Gender</label>
-
-	    <select th:field="*{gender}" class="form-control">
-	        <option value="">Select Gender</option>
-	        <option value="Male">Male</option>
-	        <option value="Female">Female</option>
-	    </select>
-
-	    <div class="text-danger"
-	         th:if="${#fields.hasErrors('gender')}"
-	         th:errors="*{gender}">
-	    </div>
-	</div>
-
-<div class="mb-3">
-    <label>Course</label>
-
-    <input type="text"
-           th:field="*{course}"
-           class="form-control">
-
-    <div class="text-danger"
-         th:if="${#fields.hasErrors('course')}"
-         th:errors="*{course}">
+    <div class="page-header">
+      <h1 th:text="${student.id == null} ? 'Add Student' : 'Edit Student'">Student</h1>
     </div>
-</div>
 
-<div class="mb-3">
-    <label>Address</label>
+    <div class="form-card student-form-card">
 
-    <input type="text"
-           th:field="*{address}"
-           class="form-control">
+      <form th:action="@{/students/save}" th:object="${student}" method="post">
+        <input type="hidden" th:field="*{id}">
 
-    <div class="text-danger"
-         th:if="${#fields.hasErrors('address')}"
-         th:errors="*{address}">
+        <fieldset class="form-section">
+          <legend>Personal information</legend>
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-sm-6">
+            <label for="name" class="form-label">Name <span aria-hidden="true" class="text-danger">*</span></label>
+            <input id="name" type="text" th:field="*{name}" required
+                   class="form-control"
+                   th:classappend="${#fields.hasErrors('name')} ? ' is-invalid'"
+                   th:attr="aria-invalid=${#fields.hasErrors('name')}, aria-describedby=${#fields.hasErrors('name')} ? 'name-error' : null"
+                   autocomplete="name">
+            <div id="name-error" class="invalid-feedback" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+          </div>
+          <div class="col-12 col-sm-6">
+            <label for="email" class="form-label">Email <span aria-hidden="true" class="text-danger">*</span></label>
+            <input id="email" type="email" th:field="*{email}" required
+                   class="form-control"
+                   th:classappend="${#fields.hasErrors('email')} ? ' is-invalid'"
+                   th:attr="aria-invalid=${#fields.hasErrors('email')}, aria-describedby=${#fields.hasErrors('email')} ? 'email-error' : null"
+                   autocomplete="email">
+            <div id="email-error" class="invalid-feedback" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></div>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-sm-6">
+            <label for="phone" class="form-label">Phone <span aria-hidden="true" class="text-danger">*</span></label>
+            <input id="phone" type="text" th:field="*{phone}" required
+                   class="form-control"
+                   th:classappend="${#fields.hasErrors('phone')} ? ' is-invalid'"
+                   th:attr="aria-invalid=${#fields.hasErrors('phone')}, aria-describedby=${#fields.hasErrors('phone')} ? 'phone-error' : null"
+                   autocomplete="tel">
+            <div id="phone-error" class="invalid-feedback" th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}"></div>
+          </div>
+          <div class="col-12 col-sm-6">
+            <label for="gender" class="form-label">Gender <span aria-hidden="true" class="text-danger">*</span></label>
+            <select id="gender" th:field="*{gender}" required
+                    class="form-select"
+                    th:classappend="${#fields.hasErrors('gender')} ? ' is-invalid'"
+                    th:attr="aria-invalid=${#fields.hasErrors('gender')}, aria-describedby=${#fields.hasErrors('gender')} ? 'gender-error' : null">
+              <option value="">Select gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+            <div id="gender-error" class="invalid-feedback" th:if="${#fields.hasErrors('gender')}" th:errors="*{gender}"></div>
+          </div>
+        </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Academic information</legend>
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-sm-6">
+            <label for="course" class="form-label">Course <span aria-hidden="true" class="text-danger">*</span></label>
+            <input id="course" type="text" th:field="*{course}" required
+                   class="form-control"
+                   th:classappend="${#fields.hasErrors('course')} ? ' is-invalid'"
+                   th:attr="aria-invalid=${#fields.hasErrors('course')}, aria-describedby=${#fields.hasErrors('course')} ? 'course-error' : null">
+            <div id="course-error" class="invalid-feedback" th:if="${#fields.hasErrors('course')}" th:errors="*{course}"></div>
+          </div>
+          <div class="col-12 col-sm-6">
+            <label for="status" class="form-label">Status <span aria-hidden="true" class="text-danger">*</span></label>
+            <select id="status" th:field="*{status}" required
+                    class="form-select"
+                    th:classappend="${#fields.hasErrors('status')} ? ' is-invalid'"
+                    th:attr="aria-invalid=${#fields.hasErrors('status')}, aria-describedby=${#fields.hasErrors('status')} ? 'status-error' : null">
+              <option value="">Select status</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+            <div id="status-error" class="invalid-feedback" th:if="${#fields.hasErrors('status')}" th:errors="*{status}"></div>
+          </div>
+        </div>
+        </fieldset>
+
+        <div class="mb-3">
+          <label for="address" class="form-label">Address <span aria-hidden="true" class="text-danger">*</span></label>
+          <input id="address" type="text" th:field="*{address}"
+                 class="form-control" required
+                 th:classappend="${#fields.hasErrors('address')} ? ' is-invalid'"
+                 th:attr="aria-invalid=${#fields.hasErrors('address')}, aria-describedby=${#fields.hasErrors('address')} ? 'address-error' : null"
+                 autocomplete="street-address">
+          <div id="address-error" class="invalid-feedback" th:if="${#fields.hasErrors('address')}" th:errors="*{address}"></div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-sm-6">
+            <label for="dateOfBirth" class="form-label">Date of Birth <span aria-hidden="true" class="text-danger">*</span></label>
+            <input id="dateOfBirth" type="date" th:field="*{dateOfBirth}" required
+                   class="form-control"
+                   th:classappend="${#fields.hasErrors('dateOfBirth')} ? ' is-invalid'"
+                   th:attr="aria-invalid=${#fields.hasErrors('dateOfBirth')}, aria-describedby=${#fields.hasErrors('dateOfBirth')} ? 'dateOfBirth-error' : null">
+            <div id="dateOfBirth-error" class="invalid-feedback" th:if="${#fields.hasErrors('dateOfBirth')}" th:errors="*{dateOfBirth}"></div>
+          </div>
+          <div class="col-12 col-sm-6">
+            <label for="admissionDate" class="form-label">Admission Date <span aria-hidden="true" class="text-danger">*</span></label>
+            <input id="admissionDate" type="date" th:field="*{admissionDate}" required
+                   class="form-control"
+                   th:classappend="${#fields.hasErrors('admissionDate')} ? ' is-invalid'"
+                   th:attr="aria-invalid=${#fields.hasErrors('admissionDate')}, aria-describedby=${#fields.hasErrors('admissionDate')} ? 'admissionDate-error' : null">
+            <div id="admissionDate-error" class="invalid-feedback" th:if="${#fields.hasErrors('admissionDate')}" th:errors="*{admissionDate}"></div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="submit" class="btn btn-primary">
+            <span th:text="${student.id == null} ? 'Save Student' : 'Update Student'">Save</span>
+          </button>
+          <a th:href="@{/students}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+
+      </form>
     </div>
+
+  </main>
 </div>
-
-<div class="mb-3">
-    <label>Date of Birth</label>
-
-    <input type="date"
-           th:field="*{dateOfBirth}"
-           class="form-control">
-
-    <div class="text-danger"
-         th:if="${#fields.hasErrors('dateOfBirth')}"
-         th:errors="*{dateOfBirth}">
-    </div>
-</div>
-
-<div class="mb-3">
-    <label>Admission Date</label>
-
-    <input type="date"
-           th:field="*{admissionDate}"
-           class="form-control">
-
-    <div class="text-danger"
-         th:if="${#fields.hasErrors('admissionDate')}"
-         th:errors="*{admissionDate}">
-    </div>
-</div>
-
-<div class="mb-3">
-    <label>Status</label>
-
-    <select th:field="*{status}" class="form-control">
-        <option value="">Select Status</option>
-        <option value="Active">Active</option>
-        <option value="Inactive">Inactive</option>
-    </select>
-
-    <div class="text-danger"
-         th:if="${#fields.hasErrors('status')}"
-         th:errors="*{status}">
-    </div>
-</div>
-
-<button class="btn btn-primary">Save Student</button>
-
-<a th:href="@{/students}" class="btn btn-secondary">Back</a>
-
-</form>
-
-</div>
-
-</div>
-
 </body>
 </html>

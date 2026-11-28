@@ -48,6 +48,28 @@ Technical choices requiring confirmation:
 - Logging/metrics/monitoring stack.
 - Whether a separate frontend/mobile client is planned.
 
+### D-016 — Initial schema migration tool
+- Status: Proposed; Flyway is implemented as the repository default pending project-owner review.
+- Date: 2026-11-26
+- Context: Student lifecycle work requires reproducible schema creation and controlled upgrades from existing MySQL installations.
+- Options: Flyway or Liquibase.
+- Decision: Use Flyway versioned SQL migrations. Fresh databases apply the initial schema migration; non-empty legacy databases baseline at version 1 and then apply later migrations. Hibernate validates the result without updating it.
+- Rationale: SQL migrations are explicit and reviewed alongside application changes; the existing deployment uses MySQL and Spring Boot supports Flyway integration.
+- Consequences: Existing databases must be backed up and inventoried before startup. The username constraint migration intentionally fails on blank or duplicate usernames. Rollback uses an approved forward migration or restoration of a verified backup, not deletion/editing of Flyway history.
+- Owner: Project owner to confirm.
+- Affected documents/modules: `pom.xml`, `src/main/resources/db/migration/`, `application.properties`, database migration guide.
+
+### D-017 — Interim student route authorization
+- Status: Interim implementation; institution-specific permission approval remains open.
+- Date: 2026-11-26
+- Context: Existing ADMIN and USER accounts had equivalent access to student data and mutations.
+- Options: Deny all student routes pending a full permission model, or apply a narrow baseline to existing roles.
+- Decision: Require authentication for student reads; permit student mutations and write forms only to ADMIN. Require authentication on all API routes and CSRF on session-authenticated state-changing requests.
+- Rationale: Preserve existing read workflows while limiting student-record changes to the higher-privilege existing role.
+- Consequences: USER is read-only. API clients must use the application session and CSRF token; select a dedicated API authentication strategy before serving third-party clients. This does not replace a full institution role/data-scope design.
+- Owner: Project owner to confirm.
+- Affected documents/modules: `SecurityConfig`, student controllers/templates, REST DTOs, security tests, README.
+
 ## 4. Decision status template
 
 ```markdown

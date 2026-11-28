@@ -1,6 +1,5 @@
 package com.studentmanagement.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,8 +25,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 public class StudentController {
 
-    @Autowired
-    private StudentService studentService;
+    private final StudentService studentService;
+
+    public StudentController(StudentService studentService) {
+        this.studentService = studentService;
+    }
 
     @GetMapping("/students")
     public String viewStudents(
@@ -71,15 +73,12 @@ public class StudentController {
 
         Student student = studentService.getStudentById(id);
 
-        System.out.println("DOB = " + student.getDateOfBirth());
-        System.out.println("Admission = " + student.getAdmissionDate());
-
         model.addAttribute("student", student);
 
         return "student-form";
     }
 
-    @GetMapping("/students/delete/{id}")
+    @PostMapping("/students/delete/{id}")
     public String deleteStudent(@PathVariable Integer id) {
 
         studentService.deleteStudent(id);
@@ -95,13 +94,4 @@ public class StudentController {
         return "students";
     }
     
-    @GetMapping("/test-error")
-    public String testError() {
-
-        int x = 10 / 0;
-
-        return "students";
-    }
-    
-
 }

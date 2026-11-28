@@ -71,13 +71,13 @@ Do not create a generic abstraction unless at least two real use cases need it.
 
 ## 4. Priority 2 — database lifecycle and integrity
 
-- Introduce Flyway or Liquibase; choose one and standardize.
-- Move schema changes into reviewed, versioned migration scripts.
-- Stop relying on Hibernate `ddl-auto=update` for deployed environments.
-- Use schema validation in production.
+**Implementation update (2026-11-26):** Flyway has been selected and added with an initial schema migration and a username-constraint migration. Hibernate now validates the schema rather than applying updates. The migration path has been exercised against fresh and synthetic legacy MySQL schemas; inventory and backup/restore review against the actual target database remain operator tasks.
+
+- Keep schema changes in reviewed, versioned migration scripts.
+- Use schema validation in deployed environments.
 - Define foreign keys, unique constraints, indexes and delete behavior deliberately.
 - Add transaction and rollback tests for multi-record workflows.
-- Establish backup, restore and migration recovery procedures.
+- Complete backup/restore and migration recovery verification against the target database.
 - Do not rename/drop existing columns without a migration and data-preservation plan.
 
 ## 5. Priority 3 — API and UI consolidation

@@ -18,10 +18,10 @@ A server-rendered student management application built with Java 17 and Spring B
 - Java 17
 - Spring Boot 4.1.0
 - Spring MVC, Thymeleaf, Spring Security
+- Server-rendered HTML, Bootstrap 5.3.3, local CSS, and vanilla JavaScript (no separate frontend build)
 - Spring Data JPA, Hibernate, and MySQL
 - Jakarta Bean Validation
 - Maven (Maven Wrapper included)
-- Bootstrap 5.3.3
 
 ## Project layout
 
@@ -38,7 +38,8 @@ src/
 │   │   ├── security/     # User details service
 │   │   └── service/      # Student business operations
 │   └── resources/
-│       ├── templates/    # Thymeleaf pages
+│       ├── static/       # Local CSS and vanilla JavaScript
+│       ├── templates/    # Thymeleaf pages and shared fragments
 │       └── application.properties
 └── test/                 # Spring application context test
 docs/                     # Project documentation
@@ -49,17 +50,25 @@ infra/                    # Docker Compose and image build files
 
 Docker Desktop (or Docker Engine with the Compose plugin) is the only local prerequisite. Compose builds the Java application in a container and starts it with MySQL; you do not need to install Java, Maven, or MySQL on your machine.
 
-From the project root, run:
+Create a local environment file from the template and replace each placeholder with a unique strong value:
 
-```bash
-docker compose -f infra/compose.yaml up --build
+```powershell
+Copy-Item infra/.env.example infra/.env
 ```
 
-When the containers are ready, open [http://localhost:8080/login](http://localhost:8080/login). Sign in with `admin` / `admin123` or `user` / `user123` on the first run (see [Local login accounts](#local-login-accounts)).
+Build and start the services in the background from the project root. The command returns after startup instead of continuously streaming container logs:
 
-MySQL data is kept in the `mysql_data` Docker volume across restarts. Stop the containers with `Ctrl+C`, or run `docker compose -f infra/compose.yaml down` in another terminal. To also permanently delete the database data, run `docker compose -f infra/compose.yaml down --volumes`.
+```powershell
+docker compose --env-file infra/.env -f infra/compose.yaml up --build --detach
+```
 
-Compose uses local-development database credentials by default. Override `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, and `MYSQL_ROOT_PASSWORD` in your shell or a local `infra/.env` file if needed; do not commit real credentials. These defaults and the seeded login accounts are not suitable for production.
+Check service status with `docker compose --env-file infra/.env -f infra/compose.yaml ps`. To follow application logs when troubleshooting, run `docker compose --env-file infra/.env -f infra/compose.yaml logs --follow app` in a separate terminal. When the app is ready, open [http://localhost:8080/login](http://localhost:8080/login). On a new database, sign in with the admin username/password configured in `infra/.env`; an optional read-only account can also be bootstrapped there. These are created only when the users table is empty, and passwords are stored as BCrypt hashes.
+
+MySQL data is kept in the `mysql_data` Docker volume across restarts. Stop and remove the containers with `docker compose --env-file infra/.env -f infra/compose.yaml down`; this preserves the database volume. To also permanently delete the database data, run `docker compose --env-file infra/.env -f infra/compose.yaml down --volumes`.
+
+The local `infra/.env` file is git-ignored; do not commit real credentials. Before upgrading an existing database, follow the inventory and backup instructions in [Database migrations and legacy-data readiness](./docs/database-migration-and-inventory.md).
+
+For an existing Docker database volume, keep the same MySQL database username and passwords that were used when that volume was initialized during the first upgrade. Changing values in `.env` does not rotate credentials stored inside an existing MySQL volume; rotate them separately after the app is upgraded and verified. If the app log reports `Access denied` for `sms_user`, restore the original `MYSQL_USER` and `MYSQL_PASSWORD` values in `infra/.env`, or perform a deliberate MySQL credential recovery. Do not remove the volume as a troubleshooting shortcut if its data must be retained.
 
 ## Run locally without Docker
 
@@ -78,15 +87,17 @@ For this option, install JDK 17 or newer and MySQL 8 or newer. The included Mave
    CREATE DATABASE student_management_system;
    ```
 
-3. Configure the database connection. The defaults in `src/main/resources/application.properties` are:
+3. Configure the database connection using environment variables; credentials have no source-controlled defaults. For example, in PowerShell:
 
-   ```properties
-   spring.datasource.url=jdbc:mysql://localhost:3306/student_management_system
-   spring.datasource.username=root
-   spring.datasource.password=root
+   ```powershell
+   $env:SPRING_DATASOURCE_URL = "jdbc:mysql://localhost:3306/student_management_system"
+   $env:SPRING_DATASOURCE_USERNAME = "your_local_user"
+   $env:SPRING_DATASOURCE_PASSWORD = "your_local_password"
+   $env:APP_BOOTSTRAP_ADMIN_USERNAME = "admin"
+   $env:APP_BOOTSTRAP_ADMIN_PASSWORD = "choose-a-strong-password"
    ```
 
-   Update these values for your local MySQL account. Alternatively, Spring Boot environment variables can override them; for example, set `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD` before starting the application.
+   The bootstrap credentials are required only when the users table is empty; they are not used to change existing accounts.
 
 4. Start the application:
 
@@ -98,18 +109,13 @@ For this option, install JDK 17 or newer and MySQL 8 or newer. The included Mave
 
 5. Open [http://localhost:8080/login](http://localhost:8080/login).
 
-Hibernate is configured with `spring.jpa.hibernate.ddl-auto=update`, so it creates or updates the schema at startup. SQL statements are logged in the current configuration.
+Flyway applies versioned schema migrations at startup, and Hibernate validates the resulting schema without changing it. SQL statement logging is disabled by default.
 
 ## Local login accounts
 
-On startup, if the users table is empty, the application creates these accounts:
+On startup, if the users table is empty, the application creates the admin account configured by `APP_BOOTSTRAP_ADMIN_USERNAME` and `APP_BOOTSTRAP_ADMIN_PASSWORD`. Optionally configure both `APP_BOOTSTRAP_USER_USERNAME` and `APP_BOOTSTRAP_USER_PASSWORD` to seed a read-only `USER` account. If the table is already populated, bootstrap credentials do not modify any account. There are no built-in passwords.
 
-| Username | Password | Role |
-| --- | --- | --- |
-| `admin` | `admin123` | `ADMIN` |
-| `user` | `user123` | `USER` |
-
-These are development defaults defined in `DataInitializer`; replace them before using the application beyond a local environment.
+`ADMIN` can manage student records; authenticated `USER` accounts have read-only access. This is the current minimum role policy, not a complete institutional permission model.
 
 ## Web routes
 
@@ -120,24 +126,24 @@ Web pages use form-based login. All routes other than the login page and static 
 | `GET` | `/login` | Login page |
 | `GET` | `/dashboard` | Student totals and active/inactive counts |
 | `GET` | `/students` | Student list; accepts a zero-based `page` query parameter |
-| `GET` | `/students/add` | New student form |
-| `POST` | `/students/save` | Save a student |
-| `GET` | `/students/edit/{id}` | Edit form for a student |
-| `GET` | `/students/delete/{id}` | Delete a student |
+| `GET` | `/students/add` | New student form (ADMIN) |
+| `POST` | `/students/save` | Save a student (ADMIN, CSRF protected) |
+| `GET` | `/students/edit/{id}` | Edit form for a student (ADMIN) |
+| `POST` | `/students/delete/{id}` | Delete a student (ADMIN, CSRF protected) |
 | `GET` | `/students/search?name={name}` | Search students by name |
 | `POST` | `/logout` | Log out |
 
 ## REST API
 
-The student API is rooted at `/api/students`. **The current security configuration permits unauthenticated access to `/api/**`.** Do not expose this configuration to an untrusted network without first defining and applying appropriate API authentication and authorization.
+The student API is rooted at `/api/students`. All API endpoints require authentication; `USER` can read and `ADMIN` can create, update, and delete. The API uses the application session and enforces CSRF on state-changing methods, so clients must authenticate and submit a valid CSRF token. Responses use DTOs rather than JPA entities.
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
 | `GET` | `/api/students` | Return all students |
 | `GET` | `/api/students/{id}` | Return one student |
-| `POST` | `/api/students` | Create a student |
-| `PUT` | `/api/students/{id}` | Update a student |
-| `DELETE` | `/api/students/{id}` | Delete a student |
+| `POST` | `/api/students` | Create a student (ADMIN, CSRF protected) |
+| `PUT` | `/api/students/{id}` | Update a student (ADMIN, CSRF protected) |
+| `DELETE` | `/api/students/{id}` | Delete a student (ADMIN, CSRF protected; returns 204) |
 | `GET` | `/api/students/search?name={name}` | Search by name |
 
 Example JSON body for `POST` or `PUT`:
@@ -168,14 +174,15 @@ Run the test suite with:
 
 ## Security and deployment notes
 
-The checked-in configuration is intended for local development, not production:
+The checked-in configuration is a development baseline, not a complete production deployment:
 
-- The database credentials and default login accounts are development defaults.
-- The REST API is currently unauthenticated.
-- CSRF protection is disabled in the Spring Security configuration.
-- Hibernate schema updates and SQL logging are enabled.
+- Provide and manage database/bootstrap credentials outside source control.
+- The REST API currently uses session authentication and CSRF; select a dedicated API authentication strategy before serving third-party clients.
+- `USER` read-only / `ADMIN` write access is a minimal interim policy; define the institution's complete permission matrix before production.
+- Configure HTTPS, secure cookie attributes, account administration, backups, monitoring, and operational access controls for the deployment environment.
+- Existing databases may contain legacy development accounts; rotate them explicitly after upgrade.
 
-Review and change these settings, configure HTTPS, and apply appropriate access controls before deployment.
+See [Database migrations and legacy-data readiness](./docs/database-migration-and-inventory.md) for the existing-database preflight and recovery workflow.
 
 ## Documentation
 

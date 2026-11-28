@@ -4,10 +4,10 @@ services:
   db:
     image: mysql:8.4
     environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-student_management_system}
-      MYSQL_USER: ${MYSQL_USER:-sms_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sms_password}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?Set MYSQL_DATABASE in infra/.env}
+      MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER in infra/.env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in infra/.env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in infra/.env}
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -26,9 +26,13 @@ services:
       db:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${MYSQL_DATABASE:-student_management_system}
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-sms_user}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-sms_password}
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${MYSQL_DATABASE:?Set MYSQL_DATABASE in infra/.env}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:?Set MYSQL_USER in infra/.env}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in infra/.env}
+      APP_BOOTSTRAP_ADMIN_USERNAME: ${APP_BOOTSTRAP_ADMIN_USERNAME:-}
+      APP_BOOTSTRAP_ADMIN_PASSWORD: ${APP_BOOTSTRAP_ADMIN_PASSWORD:-}
+      APP_BOOTSTRAP_USER_USERNAME: ${APP_BOOTSTRAP_USER_USERNAME:-}
+      APP_BOOTSTRAP_USER_PASSWORD: ${APP_BOOTSTRAP_USER_PASSWORD:-}
     ports:
       - "8080:8080"
     restart: unless-stopped
